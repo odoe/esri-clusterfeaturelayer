@@ -5,6 +5,7 @@ define([
   'dojo/_base/Color',
   'dojo/_base/connect',
   'dojo/on',
+  'dojo/promise/all',
 
   'esri/SpatialReference',
   'esri/geometry/Point',
@@ -20,10 +21,27 @@ define([
   'esri/tasks/QueryTask'
 
 ], function (
-  declare, arrayUtils, lang, Color, connect, on,
+  declare, arrayUtils, lang, Color, connect, on, all,
   SpatialReference, Point, Graphic, SimpleMarkerSymbol, SimpleLineSymbol, TextSymbol, Font,
   PopupTemplate, GraphicsLayer, Query, QueryTask
 ) {
+
+  function concat(a1, a2) {
+    return a1.concat(a2);
+  }
+
+  function merge(arrs) {
+    var target = [];
+    arrayUtils.forEach(arrs, function (a) {
+      if (lang.isArray(a)) {
+        target = concat(target, a);
+      } else {
+        target.push(a);
+      }
+    });
+    return target;
+  }
+
   return declare([GraphicsLayer], {
     constructor: function(options) {
       // options:
@@ -31,6 +49,10 @@ define([
       //    URL string. Required. Will generate clusters based on Features returned from map service. Must be esriGeometryPoint type.
       //   outFields:  Array?
       //    Optional. Defines what fields are returned with Features.
+      //   where:  String?
+      //    Optional. Where clause for query.
+      //   returnLimit:  Number?
+      //    Optional. Return limit of features returned from query. Default is 1000.
       //   distance:  Number?
       //     Optional. The max number of pixels between points to group points in the same cluster. Default value is 50.
       //   labelColor:  String?
@@ -83,6 +105,8 @@ define([
       this.url = options.url || null;
       this._outFields = options.outFields || ['*'];
       this.queryTask = new QueryTask(this.url);
+      this._where = options.where || null;
+      this._returnLimit = options.returnLimit || 1000;
 
       if (!this.url) {
         throw new Error('url is a required parameter');
@@ -128,6 +152,9 @@ define([
         var ext = extent || this._map.extent;
         var sr = ext.spatialReference;
         var query = new Query();
+        if (this._where) {
+          query.where = this._where;
+        }
         query.geometry = ext;
         this.queryTask.executeForIds(query).then(
           lang.hitch(this, '_onIdsReturned'), this._onError
@@ -143,12 +170,28 @@ define([
       if (results && results.length) {
         var query = new Query();
         query.outSpatialReference = this._map.spatialReference;
-        query.objectIds = results;
         query.returnGeometry = true;
         query.outFields = this._outFields;
-        this.queryTask.execute(query).then(
-          lang.hitch(this, '_onFeaturesReturned'), this._onError
-        );
+        var queries = [];
+        if (results.length > this._returnLimit) {
+          while(results.length) {
+            query.objectIds = results.splice(0, this._returnLimit - 1);
+            queries.push(this.queryTask.execute(query));
+          }
+          all(queries).then(lang.hitch(this, function(res) {
+            var features = arrayUtils.map(res, function(r) {
+              return r.features;
+            });
+            this._onFeaturesReturned({
+              features: merge(features)
+            });
+          }));
+        } else {
+          query.objectIds = results;
+          this.queryTask.execute(query).then(
+            lang.hitch(this, '_onFeaturesReturned'), this._onError
+          );
+        }
       } else {
         this.clear();
       }
