@@ -1,0 +1,16 @@
+node_modules/*
+app/bower_components/*
+intern/*
+output/*
+app/vendor/*
+*~
+*.swp
+.cache/*
+.grunt/*
+.idea/*
+build/*
+dist/*
+vendor/*
+*.lnk
+*ugly.js
+_SpecRunner.html
