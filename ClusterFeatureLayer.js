@@ -140,7 +140,7 @@ define([
     },
 
     _onIdsReturned: function(results) {
-      if (results) {
+      if (results && results.length) {
         var query = new Query();
         query.outSpatialReference = this._map.spatialReference;
         query.objectIds = results;
@@ -149,6 +149,8 @@ define([
         this.queryTask.execute(query).then(
           lang.hitch(this, '_onFeaturesReturned'), this._onError
         );
+      } else {
+        this.clear();
       }
     },
 
