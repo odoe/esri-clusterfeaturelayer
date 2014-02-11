@@ -13,4 +13,4 @@ A couple of things I added:
 Although this behaves similar to a FeatureLayer, it does not have all the
 optimizations of a FeatureLayer. There is no [Vector Tiling](https://developers.arcgis.com/javascript/jshelp/best_practices_feature_layers.html) for the points. A possible optimization could be to break up the request by `objectIds` in to multiple queries.
 
-A demo can be seen [here](http://odoe.github.io/esri-clusterlayer/).
+A demo can be seen [here](http://odoe.github.io/esri-clusterfeaturelayer/).
