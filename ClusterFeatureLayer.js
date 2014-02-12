@@ -221,25 +221,20 @@ define([
           valid.push(cached);
         }
       }, this);
-
       return valid;
     },
 
     _onFeaturesReturned: function(results) {
       var inExtent = this._inExtent();
+      this._clusterData.length = 0;
       if (results.features.length) {
         arrayUtils.forEach(results.features, function(feat) {
           this._clusterCache[feat.attributes.OBJECTID] = feat;
         }, this);
-        this._clusterData.length = 0;
         this._clusterData = results.features;
-        this._clusterData =  concat(this._clusterData, inExtent);
-        this._clusterGraphics();
-      } else if (inExtent.length) {
-        this._clusterData.length = 0;
-        this._clusterData =  concat(this._clusterData, inExtent);
-        this._clusterGraphics();
       }
+      this._clusterData =  concat(this._clusterData, inExtent);
+      this._clusterGraphics();
     },
 
     // public ClusterLayer methods
