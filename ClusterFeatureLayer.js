@@ -42,6 +42,12 @@ define([
     return target;
   }
 
+  function difference(arr1/*new objectIds*/, arr2/*cache*/) {
+    return arrayUtils.filter(arr1, function(value) {
+      return arr2.indexOf(value) < 0;
+    });
+  }
+
   return declare([GraphicsLayer], {
     constructor: function(options) {
       // options:
@@ -60,7 +66,7 @@ define([
       //   labelOffset:  String?
       //     Optional. Number of pixels to shift a cluster label vertically. Defaults to -5 to align labels with circle symbols. Does not work in IE.
       //   resolution:  Number
-      //     Required. Width of a pixel in map coordinates. Example of how to calculate: 
+      //     Required. Width of a pixel in map coordinates. Example of how to calculate:
       //     map.extent.getWidth() / map.width
       //   showSingles:  Boolean?
       //     Optional. Whether or graphics should be displayed when a cluster graphic is clicked. Default is true.
@@ -111,9 +117,11 @@ define([
       if (!this.url) {
         throw new Error('url is a required parameter');
       }
+      this._clusterCache = {};
+      this._objectIdCache = [];
     },
 
-    // override esri/layers/GraphicsLayer methods 
+    // override esri/layers/GraphicsLayer methods
     _setMap: function(map, surface) {
       // connect to onZoomEnd so data is re-clustered when zoom level changes
       this._zoomEnd = connect.connect(map, 'onZoomEnd', this, function() {
@@ -149,6 +157,7 @@ define([
 
     _getObjectIds: function(extent) {
       if (this.url) {
+        this.clear();
         var ext = extent || this._map.extent;
         var sr = ext.spatialReference;
         var query = new Query();
@@ -167,7 +176,9 @@ define([
     },
 
     _onIdsReturned: function(results) {
-      if (results && results.length) {
+      var uncached = difference(results, this._objectIdCache);
+      this._objectIdCache = this._objectIdCache.concat(uncached);
+      if (uncached && uncached.length) {
         var query = new Query();
         query.outSpatialReference = this._map.spatialReference;
         query.returnGeometry = true;
@@ -187,25 +198,58 @@ define([
             });
           }));
         } else {
-          query.objectIds = results;
+          query.objectIds = uncached;
           this.queryTask.execute(query).then(
             lang.hitch(this, '_onFeaturesReturned'), this._onError
           );
         }
+      } else if (this._objectIdCache.length) {
+        this._onFeaturesReturned({ // kinda hacky here
+          features: []
+        });
       } else {
         this.clear();
       }
     },
 
+    _inExtent: function() {
+      var ext = this._map.extent;
+      var valid = [];
+      arrayUtils.forEach(this._objectIdCache, function(oid) {
+        var cached = this._clusterCache[oid];
+        if (cached && ext.contains(cached.geometry)) {
+          valid.push(cached);
+        }
+      }, this);
+
+      return valid;
+    },
+
     _onFeaturesReturned: function(results) {
+      var inExtent = this._inExtent();
       if (results.features.length) {
+        arrayUtils.forEach(results.features, function(feat) {
+          this._clusterCache[feat.attributes.OBJECTID] = feat;
+        }, this);
         this._clusterData = results.features;
-        this.clear();
+        this._clusterData =  this._clusterData.concat(inExtent);
+        this._clusterGraphics();
+      } else if (inExtent.length) {
+        this._clusterData =  this._clusterData.concat(inExtent);
         this._clusterGraphics();
       }
     },
 
     // public ClusterLayer methods
+    clearCache: function() {
+      // Summary: Clears the cache for clustered items
+      arrayUtils.forEach(this._objectIdCache, function(oid) {
+        delete this._objectIdCache[oid];
+      }, this);
+      this._objectIdCache.length = 0;
+      this._clusterCache = {};
+    },
+
     add: function(p) {
       // Summary:  The argument is a data point to be added to an existing cluster. If the data point falls within an existing cluster, it is added to that cluster and the cluster's label is updated. If the new point does not fall within an existing cluster, a new cluster is created.
       //
@@ -291,8 +335,9 @@ define([
       }
     },
 
-    // internal methods 
+    // internal methods
     _clusterGraphics: function() {
+      this.clear();
       // first time through, loop through the points
       for ( var j = 0, jl = this._clusterData.length; j < jl; j++ ) {
         // see if the current feature should be added to a cluster
@@ -325,9 +370,9 @@ define([
       return (distance <= this._clusterTolerance);
     },
 
-    // points passed to clusterAddPoint should be included 
+    // points passed to clusterAddPoint should be included
     // in an existing cluster
-    // also give the point an attribute called clusterId 
+    // also give the point an attribute called clusterId
     // that corresponds to its cluster
     _clusterAddPoint: function(feature, p, cluster) {
       // average in the new point to the cluster geometry
@@ -361,7 +406,7 @@ define([
       feature.attributes.clusterId = p.attributes.clusterId = cluster.attributes.clusterId;
     },
 
-    // point passed to clusterCreate isn't within the 
+    // point passed to clusterCreate isn't within the
     // clustering distance specified for the layer so
     // create a new cluster for it
     _clusterCreate: function(feature, p) {
@@ -373,7 +418,7 @@ define([
       }
       feature.attributes.clusterId = p.attributes.clusterId = clusterId;
       // create the cluster
-      var cluster = { 
+      var cluster = {
         'x': p.x,
         'y': p.y,
         'attributes' : {
@@ -450,7 +495,7 @@ define([
     _updateLabel: function(c) {
       // find the existing label
       var label = arrayUtils.filter(this.graphics, function(g) {
-        return g.symbol && 
+        return g.symbol &&
           g.symbol.declaredClass == 'esri.symbol.TextSymbol' &&
           g.attributes.clusterId == c.attributes.clusterId;
       });
