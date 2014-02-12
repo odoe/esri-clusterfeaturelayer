@@ -11,6 +11,7 @@ A couple of things I added:
 * Has an `outFields` option for the Features returned.
 
 Although this behaves similar to a FeatureLayer, it does not have all the
-optimizations of a FeatureLayer. There is no [Vector Tiling](https://developers.arcgis.com/javascript/jshelp/best_practices_feature_layers.html) for the points. A possible optimization could be to break up the request by `objectIds` in to multiple queries.
+optimizations of a FeatureLayer. There is no [Vector Tiling](https://developers.arcgis.com/javascript/jshelp/best_practices_feature_layers.html) for the points. ~~A possible optimization could be to break up the request by `objectIds` in to multiple queries.~~
+I added the ability to send requests by `objectIds` in chunks of 1000 by default. Can be set in options. I also added a cache for clustered graphics and a `clearCache()` method.
 
 A demo can be seen [here](http://odoe.github.io/esri-clusterfeaturelayer/).
