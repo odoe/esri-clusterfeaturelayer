@@ -177,16 +177,16 @@ define([
 
     _onIdsReturned: function(results) {
       var uncached = difference(results, this._objectIdCache);
-      this._objectIdCache = this._objectIdCache.concat(uncached);
+      this._objectIdCache = concat(this._objectIdCache, uncached);
       if (uncached && uncached.length) {
         var query = new Query();
         query.outSpatialReference = this._map.spatialReference;
         query.returnGeometry = true;
         query.outFields = this._outFields;
         var queries = [];
-        if (results.length > this._returnLimit) {
-          while(results.length) {
-            query.objectIds = results.splice(0, this._returnLimit - 1);
+        if (uncached.length > this._returnLimit) {
+          while(uncached.length) {
+            query.objectIds = uncached.splice(0, this._returnLimit - 1);
             queries.push(this.queryTask.execute(query));
           }
           all(queries).then(lang.hitch(this, function(res) {
@@ -231,11 +231,13 @@ define([
         arrayUtils.forEach(results.features, function(feat) {
           this._clusterCache[feat.attributes.OBJECTID] = feat;
         }, this);
+        this._clusterData.length = 0;
         this._clusterData = results.features;
-        this._clusterData =  this._clusterData.concat(inExtent);
+        this._clusterData =  concat(this._clusterData, inExtent);
         this._clusterGraphics();
       } else if (inExtent.length) {
-        this._clusterData =  this._clusterData.concat(inExtent);
+        this._clusterData.length = 0;
+        this._clusterData =  concat(this._clusterData, inExtent);
         this._clusterGraphics();
       }
     },
