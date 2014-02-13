@@ -176,7 +176,7 @@ define([
 
             renderer.addBreak(2, 10, small);
             renderer.addBreak(10, 25, medium);
-            renderer.addBreak(25, 5000, large);
+            renderer.addBreak(25, Infinity, large);
             this.setRenderer(renderer);
           }
           this._clusterResolution = map.extent.getWidth() / map.width; // probably a bad default...
