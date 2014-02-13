@@ -10,10 +10,14 @@ define([
   'esri/SpatialReference',
   'esri/geometry/Point',
   'esri/graphic',
+
   'esri/symbols/SimpleMarkerSymbol',
   'esri/symbols/SimpleLineSymbol',
+  'esri/symbols/SimpleFillSymbol',
   'esri/symbols/TextSymbol',
   'esri/symbols/Font',
+
+  'esri/renderers/ClassBreaksRenderer',
 
   'esri/dijit/PopupTemplate',
   'esri/layers/GraphicsLayer',
@@ -22,7 +26,9 @@ define([
 
 ], function (
   declare, arrayUtils, lang, Color, connect, on, all,
-  SpatialReference, Point, Graphic, SimpleMarkerSymbol, SimpleLineSymbol, TextSymbol, Font,
+  SpatialReference, Point, Graphic,
+  SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, TextSymbol, Font,
+  ClassBreaksRenderer,
   PopupTemplate, GraphicsLayer, Query, QueryTask
 ) {
 
@@ -55,6 +61,8 @@ define([
       //    URL string. Required. Will generate clusters based on Features returned from map service. Must be esriGeometryPoint type.
       //   outFields:  Array?
       //    Optional. Defines what fields are returned with Features.
+      //   objectIdField:  String?
+      //    Optional. Defines the OBJECTID field of service. Default is 'OBJECTID'.
       //   where:  String?
       //    Optional. Where clause for query.
       //   returnLimit:  Number?
@@ -96,7 +104,8 @@ define([
       this._zoomOnClick = options.hasOwnProperty('zoomOnClick') ? options.zoomOnClick : true;
       // symbol for single graphics
       var sms = SimpleMarkerSymbol;
-      this._singleSym = options.singleSymbol || new sms('circle', 6, null, new Color('#888'));
+      var sls = SimpleLineSymbol;
+      this._singleSym = options.singleSymbol;// || new sms('circle', 6, null, new Color('#888'));
       this._singleTemplate = options.singleTemplate || new PopupTemplate({ 'title': '', 'description': '{*}' });
       this._maxSingles = options.maxSingles || 1000;
 
@@ -141,6 +150,35 @@ define([
         if (e.layer === this) {
           layerAdded.remove();
           // calculate and set the initial resolution
+          if (!this.renderer) {
+            var sls = SimpleLineSymbol;
+            var sms = SimpleMarkerSymbol;
+            var defaultSym = this._singleSym || new sms(
+              sms.STYLE_CIRCLE, 14,
+              new sls(
+                sls.STYLE_SOLID,
+                new Color([255,255,0]), 2
+              ),
+              new Color([0,191,255,0.75])
+            );
+            var renderer = new ClassBreaksRenderer(defaultSym, 'clusterCount');
+
+            var small = new sms('circle', 20,
+                        new sls(sls.STYLE_SOLID, new Color([255,125,0,0.25]), 10),
+                        new Color([255,125,0,0.5]));
+
+            var medium = new sms('circle', 30,
+                                      new sls(sls.STYLE_SOLID, new Color([255,0,250,0.25]), 10),
+                                      new Color([255,0,250,0.5]));
+            var large = new sms('circle', 50,
+                        new sls(sls.STYLE_SOLID, new Color([255,0,0,0.25]), 10),
+                        new Color([255,0,0,0.5]));
+
+            renderer.addBreak(2, 10, small);
+            renderer.addBreak(10, 25, medium);
+            renderer.addBreak(25, 5000, large);
+            this.setRenderer(renderer);
+          }
           this._clusterResolution = map.extent.getWidth() / map.width; // probably a bad default...
           this._getObjectIds(map.extent);
         }
