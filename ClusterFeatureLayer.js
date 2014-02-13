@@ -114,6 +114,8 @@ define([
       this._where = options.where || null;
       this._returnLimit = options.returnLimit || 1000;
 
+      this._objectIdField = options.objectIdField || 'OBJECTID';
+
       if (!this.url) {
         throw new Error('url is a required parameter');
       }
@@ -229,7 +231,7 @@ define([
       this._clusterData.length = 0;
       if (results.features.length) {
         arrayUtils.forEach(results.features, function(feat) {
-          this._clusterCache[feat.attributes.OBJECTID] = feat;
+          this._clusterCache[feat.attributes[this._objectIdField]] = feat;
         }, this);
         this._clusterData = results.features;
       }
