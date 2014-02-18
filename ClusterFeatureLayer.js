@@ -19,6 +19,9 @@ define([
 
   'esri/renderers/ClassBreaksRenderer',
 
+  'esri/request',
+  'esri/symbols/jsonUtils',
+
   'esri/dijit/PopupTemplate',
   'esri/layers/GraphicsLayer',
   'esri/tasks/query',
@@ -29,6 +32,7 @@ define([
   SpatialReference, Point, Graphic,
   SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, TextSymbol, Font,
   ClassBreaksRenderer,
+  esriRequest, symbolJsonUtils,
   PopupTemplate, GraphicsLayer, Query, QueryTask
 ) {
 
@@ -130,57 +134,92 @@ define([
       }
       this._clusterCache = {};
       this._objectIdCache = [];
+
+      this.detailsLoaded = false;
+
+      this._getServiceDetails();
+    },
+
+    _getServiceDetails: function() {
+      esriRequest({
+        url: this.url,
+        content: {
+          f: 'json'
+        },
+        handleAs: 'json'
+      }).then(lang.hitch(this, function(response) {
+        console.debug('service details', response);
+        this._defaultRenderer = response.drawingInfo.renderer;
+        this.emit('details-loaded', this._defaultRenderer);
+      }));
+    },
+
+    _getDefaultSymbol: function(g) {
+      console.debug('::_getDefaultSymbol - ', this._defaultRenderer);
+      var rend = this._defaultRenderer;
+      if (!rend) {
+        return this._singleSym;
+      }
+      if (rend.type === 'simple') {
+        return symbolJsonUtils.fromJson(rend.symbol);
+      }
+      return this.singleSym;
+    },
+
+    _reCluster: function() {
+        // update resolution
+        this._clusterResolution = this._map.extent.getWidth() / this._map.width;
+        this._getObjectIds(this._map.extent);
     },
 
     // override esri/layers/GraphicsLayer methods
     _setMap: function(map, surface) {
       // connect to onZoomEnd so data is re-clustered when zoom level changes
       this._zoomEnd = connect.connect(map, 'onZoomEnd', this, function() {
-        // update resolution
-        this._clusterResolution = this._map.extent.getWidth() / this._map.width;
-        this._getObjectIds();
+        this._reCluster();
       });
 
-      this._extentChange = on(map, 'extent-change', lang.hitch(this, function() {
-        this._clusterResolution = this._map.extent.getWidth() / this._map.width;
-        this._getObjectIds();
-      }));
+      this._extentChange = on(map, 'extent-change', lang.hitch(this, '_reCluster'));
 
       var layerAdded = on(map, 'layer-add', lang.hitch(this, function(e) {
         if (e.layer === this) {
           layerAdded.remove();
-          // calculate and set the initial resolution
-          if (!this.renderer) {
-            var sls = SimpleLineSymbol;
-            var sms = SimpleMarkerSymbol;
-            var defaultSym = this._singleSym || new sms(
-              sms.STYLE_CIRCLE, 14,
-              new sls(
-                sls.STYLE_SOLID,
-                new Color([255,255,0]), 2
-              ),
-              new Color([0,191,255,0.75])
-            );
-            var renderer = new ClassBreaksRenderer(defaultSym, 'clusterCount');
+          if (!this.detailsLoaded) {
+            on.once(this, 'details-loaded', lang.hitch(this, function() {
+              if (!this.renderer) {
+                var sls = SimpleLineSymbol;
+                var sms = SimpleMarkerSymbol;
+                var defaultSym = this._singleSym ||
+                  this._getDefaultSymbol() ||
+                  new sms(
+                  sms.STYLE_CIRCLE, 14,
+                  new sls(
+                    sls.STYLE_SOLID,
+                    new Color([255,255,0]), 2
+                  ),
+                  new Color([0,191,255,0.75])
+                );
+                var renderer = new ClassBreaksRenderer(defaultSym, 'clusterCount');
 
-            var small = new sms('circle', 20,
-                        new sls(sls.STYLE_SOLID, new Color([255,125,0,0.25]), 10),
-                        new Color([255,125,0,0.5]));
+                var small = new sms('circle', 20,
+                            new sls(sls.STYLE_SOLID, new Color([255,125,0,0.25]), 10),
+                            new Color([255,125,0,0.5]));
 
-            var medium = new sms('circle', 30,
-                                      new sls(sls.STYLE_SOLID, new Color([255,0,250,0.25]), 10),
-                                      new Color([255,0,250,0.5]));
-            var large = new sms('circle', 50,
-                        new sls(sls.STYLE_SOLID, new Color([255,0,0,0.25]), 10),
-                        new Color([255,0,0,0.5]));
+                var medium = new sms('circle', 30,
+                                          new sls(sls.STYLE_SOLID, new Color([255,0,250,0.25]), 10),
+                                          new Color([255,0,250,0.5]));
+                var large = new sms('circle', 50,
+                            new sls(sls.STYLE_SOLID, new Color([255,0,0,0.25]), 10),
+                            new Color([255,0,0,0.5]));
 
-            renderer.addBreak(2, 10, small);
-            renderer.addBreak(10, 25, medium);
-            renderer.addBreak(25, Infinity, large);
-            this.setRenderer(renderer);
+                renderer.addBreak(2, 10, small);
+                renderer.addBreak(10, 25, medium);
+                renderer.addBreak(25, Infinity, large);
+                this.setRenderer(renderer);
+              }
+              this._reCluster();
+            }));
           }
-          this._clusterResolution = map.extent.getWidth() / map.width; // probably a bad default...
-          this._getObjectIds(map.extent);
         }
       }));
 
@@ -506,7 +545,8 @@ define([
     _addSingles: function(singles) {
       // add single graphics to the map
       arrayUtils.forEach(singles, function(g) {
-        g.setSymbol(this.singleSym);
+        // TODO function to get symbol
+        g.setSymbol(this._getDefaultSymbol(g));
         g.setInfoTemplate(this._singleTemplate);
         this._singles.push(g);
         if ( this._showSingles ) {
