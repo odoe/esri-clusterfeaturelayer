@@ -9,6 +9,8 @@ A couple of things I added:
 * A `zoomOnClick` option that will zoom the map 1 zoom level on the clicked
   cluster graphic.
 * Has an `outFields` option for the Features returned.
+* Has an option to use the services default renderer for single features.
+* And more, check source for more options.
 
 Although this behaves similar to a FeatureLayer, it does not have all the
 optimizations of a FeatureLayer. There is no [Vector Tiling](https://developers.arcgis.com/javascript/jshelp/best_practices_feature_layers.html) for the points. ~~A possible optimization could be to break up the request by `objectIds` in to multiple queries.~~

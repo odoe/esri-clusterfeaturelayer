@@ -73,7 +73,7 @@
             'marginTop': '20'
           };
           map = new Map('map', {
-            basemap: 'hybrid',
+            basemap: 'gray',
             center: [-87.65, 41.85],
             zoom: 13
           });
@@ -86,6 +86,23 @@
 
           function addClusters(resp) {
             // popupTemplate to work with attributes specific to this dataset
+            var popupTemplate = PopupTemplate({
+              'title': '',
+              'fieldInfos': [{
+                'fieldName': 'Station',
+                'label': 'Station: ',
+                visible: true
+              }, {
+                'fieldName': 'Growth',
+                'label': 'Growth: ',
+                visible: true
+              }, {
+                'fieldName': 'ADA',
+                'label': 'ADA: ',
+                visible: true
+              }]
+            });
+            /*
             var popupTemplate = PopupTemplate({
               'title': '',
               'fieldInfos': [{
@@ -102,16 +119,22 @@
                 visible: true
               }]
             });
+            */
 
             // cluster layer that uses OpenLayers style clustering
+            // class break renderer service
+            // http://services.arcgis.com/V6ZHFr6zdgNZuVG0/ArcGIS/rest/services/CTAStationStats/FeatureServer/0
+            // simple renderer service
+            // http://services.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/ChicagoCrime/FeatureServer/0
             clusterLayer = new ClusterFeatureLayer({
-              'url': 'http://services.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/ChicagoCrime/FeatureServer/0',
+              'url': 'http://services.arcgis.com/V6ZHFr6zdgNZuVG0/ArcGIS/rest/services/CTAStationStats/FeatureServer/0',
               'distance': 100,
               'id': 'clusters',
               'labelColor': '#fff',
               'resolution': map.extent.getWidth() / map.width,
               'singleColor': '#888',
-              'singleTemplate': popupTemplate
+              'singleTemplate': popupTemplate,
+              'useDefaultSymbol': true
             });
             var picBaseUrl = 'http://static.arcgis.com/images/Symbols/Shapes/';
             var defaultSym = new PictureMarkerSymbol(picBaseUrl + 'BluePin1LargeB.png', 32, 32).setOffset(0, 15);

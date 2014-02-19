@@ -21,6 +21,7 @@ define([
 
   'esri/request',
   'esri/symbols/jsonUtils',
+  'esri/renderers/jsonUtils',
 
   'esri/dijit/PopupTemplate',
   'esri/layers/GraphicsLayer',
@@ -32,7 +33,7 @@ define([
   SpatialReference, Point, Graphic,
   SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol, TextSymbol, Font,
   ClassBreaksRenderer,
-  esriRequest, symbolJsonUtils,
+  esriRequest, symbolJsonUtils, rendererJsonUtil,
   PopupTemplate, GraphicsLayer, Query, QueryTask
 ) {
 
@@ -69,6 +70,8 @@ define([
       //    Optional. Defines the OBJECTID field of service. Default is 'OBJECTID'.
       //   where:  String?
       //    Optional. Where clause for query.
+      //   useDefaultSymbol:  Boolean?
+      //    Optional. Use the services default symbology for single features.
       //   returnLimit:  Number?
       //    Optional. Return limit of features returned from query. Default is 1000.
       //   distance:  Number?
@@ -92,7 +95,7 @@ define([
       //     Optional. Threshold for whether or not to show graphics for points in a cluster. Default is 1000.
       //   webmap:  Boolean?
       //     Optional. Whether or not the map is from an ArcGIS.com webmap. Default is false.
-      //   font:  Boolean?
+      //   font:  TextSymbol?
       //     Optional. Font to use for TextSymbol. Default is 10pt, Arial.
       //   spatialReference:  SpatialReference?
       //     Optional. Spatial reference for all graphics in the layer. This has to match the spatial reference of the map. Default is 102100. Omit this if the map uses basemaps in web mercator.
@@ -115,7 +118,7 @@ define([
 
       this._webmap = options.hasOwnProperty('webmap') ? options.webmap : false;
 
-      this._font =options.font || new Font('10pt').setFamily('Arial');
+      this._font = options.font || new Font('10pt').setFamily('Arial');
 
       this._sr = options.spatialReference || new SpatialReference({ 'wkid': 102100 });
 
@@ -125,6 +128,7 @@ define([
       this._outFields = options.outFields || ['*'];
       this.queryTask = new QueryTask(this.url);
       this._where = options.where || null;
+      this._useDefaultSymbol = options.hasOwnProperty('useDefaultSymbol') ? options.useDefaultSymbol : false;
       this._returnLimit = options.returnLimit || 1000;
 
       this._objectIdField = options.objectIdField || 'OBJECTID';
@@ -148,37 +152,47 @@ define([
         },
         handleAs: 'json'
       }).then(lang.hitch(this, function(response) {
-        console.debug('service details', response);
-        this._defaultRenderer = response.drawingInfo.renderer;
-        this.emit('details-loaded', this._defaultRenderer);
+        this._defaultRenderer =
+          rendererJsonUtil.fromJson(response.drawingInfo.renderer);
+        this.emit('details-loaded', response);
       }));
     },
 
     _getDefaultSymbol: function(g) {
-      console.debug('::_getDefaultSymbol - ', this._defaultRenderer);
       var rend = this._defaultRenderer;
-      if (!rend) {
+      if (!this._useDefaultSymbol || !rend) {
         return this._singleSym;
+      } else {
+        return rend.getSymbol(g);
       }
-      if (rend.type === 'simple') {
-        return symbolJsonUtils.fromJson(rend.symbol);
+    },
+
+    _getRenderedSymbol: function(feature) {
+      var attr = feature.attributes;
+      if (attr.clusterCount === 1) {
+        if (!this._useDefaultSymbol) {
+          return this._singleSym;
+        }
+        var rend = this._defaultRenderer;
+        if (!rend) { // something went wrong getting default renderer
+          return null;
+        } else {
+          return rend.getSymbol(feature);
+        }
+      } else {
+        return null;
       }
-      return this.singleSym;
     },
 
     _reCluster: function() {
-        // update resolution
-        this._clusterResolution = this._map.extent.getWidth() / this._map.width;
-        this._getObjectIds(this._map.extent);
+      // update resolution
+      this._clusterResolution = this._map.extent.getWidth() / this._map.width;
+      this._getObjectIds(this._map.extent);
     },
 
     // override esri/layers/GraphicsLayer methods
     _setMap: function(map, surface) {
-      // connect to onZoomEnd so data is re-clustered when zoom level changes
-      this._zoomEnd = connect.connect(map, 'onZoomEnd', this, function() {
-        this._reCluster();
-      });
-
+      // listen to extent-change so data is re-clustered when zoom level changes
       this._extentChange = on(map, 'extent-change', lang.hitch(this, '_reCluster'));
 
       var layerAdded = on(map, 'layer-add', lang.hitch(this, function(e) {
@@ -189,8 +203,7 @@ define([
               if (!this.renderer) {
                 var sls = SimpleLineSymbol;
                 var sms = SimpleMarkerSymbol;
-                var defaultSym = this._singleSym ||
-                  this._getDefaultSymbol() ||
+                this._singleSym = this._singleSym ||
                   new sms(
                   sms.STYLE_CIRCLE, 14,
                   new sls(
@@ -199,15 +212,15 @@ define([
                   ),
                   new Color([0,191,255,0.75])
                 );
-                var renderer = new ClassBreaksRenderer(defaultSym, 'clusterCount');
+                var renderer = new ClassBreaksRenderer(this._singleSym, 'clusterCount');
 
                 var small = new sms('circle', 20,
                             new sls(sls.STYLE_SOLID, new Color([255,125,0,0.25]), 10),
                             new Color([255,125,0,0.5]));
 
                 var medium = new sms('circle', 30,
-                                          new sls(sls.STYLE_SOLID, new Color([255,0,250,0.25]), 10),
-                                          new Color([255,0,250,0.5]));
+                              new sls(sls.STYLE_SOLID, new Color([255,0,250,0.25]), 10),
+                              new Color([255,0,250,0.5]));
                 var large = new sms('circle', 50,
                             new sls(sls.STYLE_SOLID, new Color([255,0,0,0.25]), 10),
                             new Color([255,0,0,0.5]));
@@ -230,7 +243,6 @@ define([
 
     _unsetMap: function() {
       this.inherited(arguments);
-      connect.disconnect(this._zoomEnd);
       this._extentChange.remove();
     },
 
@@ -503,6 +515,7 @@ define([
           'extent': [ p.x, p.y, p.x, p.y ]
         }
       };
+      lang.mixin(cluster.attributes, feature.attributes);
       this._clusters.push(cluster);
     },
 
@@ -517,12 +530,9 @@ define([
       var point = new Point(c.x, c.y, this._sr);
       var count = c.attributes.clusterCount;
 
-      this.add(
-        new Graphic(
-          point,
-          null,
-          c.attributes)
-      );
+      var g = new Graphic(point, null, c.attributes);
+      g.setSymbol(this._getRenderedSymbol(g));
+      this.add(g);
       // code below is used to not label clusters with a single point
       if ( c.attributes.clusterCount < 2 ) {
         return;
