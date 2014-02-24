@@ -89,6 +89,8 @@ define([
       //     Optional. Will zoom the map when a cluster graphic is clicked. Default is true.
       //   singleSymbol:  MarkerSymbol?
       //     Marker Symbol (picture or simple). Optional. Symbol to use for graphics that represent single points. Default is a small gray SimpleMarkerSymbol.
+      //   singleRenderer:  Renderer?
+      //     Optional. Can provide a renderer for single features to override the default renderer.
       //   singleTemplate:  PopupTemplate?
       //     PopupTemplate</a>. Optional. Popup template used to format attributes for graphics that represent single points. Default shows all attributes as 'attribute = value' (not recommended).
       //   maxSingles:  Number?
@@ -130,6 +132,7 @@ define([
       this._where = options.where || null;
       this._useDefaultSymbol = options.hasOwnProperty('useDefaultSymbol') ? options.useDefaultSymbol : false;
       this._returnLimit = options.returnLimit || 1000;
+      this._singleRenderer = options.singleRenderer;
 
       this._objectIdField = options.objectIdField || 'OBJECTID';
 
@@ -152,7 +155,7 @@ define([
         },
         handleAs: 'json'
       }).then(lang.hitch(this, function(response) {
-        this._defaultRenderer =
+        this._defaultRenderer = this._singleRenderer ||
           rendererJsonUtil.fromJson(response.drawingInfo.renderer);
         this.emit('details-loaded', response);
       }));
