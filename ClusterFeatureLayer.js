@@ -63,7 +63,7 @@ define([
     constructor: function(options) {
       // options:
       //   url:  string
-      //    URL string. Required. Will generate clusters based on Features returned from map service. Must be esriGeometryPoint type.
+      //    URL string. Required. Will generate clusters based on Features returned from map service.
       //   outFields:  Array?
       //    Optional. Defines what fields are returned with Features.
       //   objectIdField:  String?
@@ -95,8 +95,6 @@ define([
       //     PopupTemplate</a>. Optional. Popup template used to format attributes for graphics that represent single points. Default shows all attributes as 'attribute = value' (not recommended).
       //   maxSingles:  Number?
       //     Optional. Threshold for whether or not to show graphics for points in a cluster. Default is 1000.
-      //   webmap:  Boolean?
-      //     Optional. Whether or not the map is from an ArcGIS.com webmap. Default is false.
       //   font:  TextSymbol?
       //     Optional. Font to use for TextSymbol. Default is 10pt, Arial.
       //   spatialReference:  SpatialReference?
@@ -117,8 +115,6 @@ define([
       this._singleSym = options.singleSymbol;// || new sms('circle', 6, null, new Color('#888'));
       this._singleTemplate = options.singleTemplate || new PopupTemplate({ 'title': '', 'description': '{*}' });
       this._maxSingles = options.maxSingles || 1000;
-
-      this._webmap = options.hasOwnProperty('webmap') ? options.webmap : false;
 
       this._font = options.font || new Font('10pt').setFamily('Arial');
 
