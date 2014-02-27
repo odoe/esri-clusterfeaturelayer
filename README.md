@@ -12,7 +12,7 @@ A couple of things I added:
 * Has an option to use the services default renderer for single features.
 * And more, check source for more options.
 
-![App](https://raw.github.com/odoe/esri-clusterfeaturelayer/master/demo.jpg)
+![App](https://raw.github.com/odoe/esri-clusterfeaturelayer/master/demo.png)
 
 ## All options
 * `url` *required* - Will generate clusters based on Features returned from map service.
