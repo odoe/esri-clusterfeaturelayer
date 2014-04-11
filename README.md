@@ -28,7 +28,7 @@ with service. Default is `true`.
 is `['*']`.
 * `objectIdField` *optional* - Defines the `OBJECTID` field of service. Default is 'OBJECTID'.
 * `where` *optional* - Where clause for query. Default is `null`.
-* `useDefaultSymbol` *optional* - Use the services default symbology for single features. Default is `false`.
+* `useDefaultSymbol` *optional* - Use the services default symbology for single features. Default is `false`. If clustering a polygon service, will always default to `false`.
 * `returnLimit` *optional* - Return limit of features returned from query. Default is `1000`.
 * `distance` *optional* - The max number of pixels between points to group points in the same cluster. Default value is `50`.
 * `labelColor` *optional* - Hex string or array of rgba values used as the color for cluster labels. Default value is #fff (white).
@@ -56,3 +56,4 @@ I added the ability to send requests by `objectIds` in chunks of 1000 by default
 
 ## Demo
 A demo can be seen [here](http://odoe.github.io/esri-clusterfeaturelayer/).
+A demo using a service of polygons shown as clusters can be seen [here](http://odoe.github.io/esri-clusterfeaturelayer/polytopoint.html).
