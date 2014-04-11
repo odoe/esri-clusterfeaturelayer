@@ -636,9 +636,9 @@ define([
         // console.log('update label...found: ', label);
         this.remove(label[0]);
         var newLabel = new TextSymbol(c.attributes.clusterCount)
-        .setColor(new Color(this._clusterLabelColor))
-        .setOffset(0, this._clusterLabelOffset)
-        .setFont(this._font);
+          .setColor(new Color(this._clusterLabelColor))
+          .setOffset(0, this._clusterLabelOffset)
+          .setFont(this._font);
         this.add(
           new Graphic(
             new Point(c.x, c.y, this._sr),
