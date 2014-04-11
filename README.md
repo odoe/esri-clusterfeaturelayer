@@ -6,6 +6,8 @@ A couple of things I added:
 
 * Works off a URL instead of a data option, like a [FeatureLayer](https://developers.arcgis.com/javascript/jsapi/featurelayer-amd.html).
 * Option to add a [Font](https://developers.arcgis.com/javascript/jsapi/font-amd.html) for the Clusters [TextSymbol](https://developers.arcgis.com/javascript/jsapi/textsymbol-amd.html). Default is `10pt` and `Arial`.
+* If a service of geometryType `esriGeometryPolygon` is provided, it will
+  convert those geometries to points and cluster them.
 * A `zoomOnClick` option that will zoom the map 1 zoom level on the clicked
   cluster graphic.
 * Has a `MODE_SNAPSHOT` that will cache all features in the service for
