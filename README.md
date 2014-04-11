@@ -39,6 +39,12 @@ is `['*']`.
 * `font` *optional* Font to use for TextSymbol. Default is 10pt, Arial.
 * `spatialReferenc` *optional* Spatial reference for all graphics in the layer. This has to match the spatial reference of the map. Default is 102100. Omit this if the map uses basemaps in web mercator.
 
+## Events
+* `clusters-shown` - fires when clusters have been drawn and shown on map. Fires
+  after the map extent changes.
+* `details-loaded` - fires when the layer has downloaded the layer has
+  downloaded the default renderer properties from the service.
+
 ## Notes
 Although this behaves similar to a FeatureLayer, it does not have all the
 optimizations of a FeatureLayer. There is no [Vector Tiling](https://developers.arcgis.com/javascript/jshelp/best_practices_feature_layers.html) for the points. ~~A possible optimization could be to break up the request by `objectIds` in to multiple queries.~~

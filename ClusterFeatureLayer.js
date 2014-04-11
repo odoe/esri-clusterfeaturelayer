@@ -579,6 +579,7 @@ define([
       for ( var i = 0, il = this._clusters.length; i < il; i++ ) {
         this._showCluster(this._clusters[i]);
       }
+      this.emit('clusters-shown', this._clusters);
       //var end = new Date().valueOf();
       //console.debug('#_showAllClusters end', (end - start)/1000);
     },
@@ -605,7 +606,7 @@ define([
           point,
           label,
           c.attributes
-      )
+        )
       );
     },
 
