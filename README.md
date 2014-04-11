@@ -16,6 +16,10 @@ A couple of things I added:
 
 ## All options
 * `url` *required* - Will generate clusters based on Features returned from map service.
+* `MODE_SNAPSHOT` *optional* - Will download and cache all features in service
+  to draw clusters much quicker. Takes a little longer to loader, but improves
+performance during continued usage. Use `updateClusters()` to refresh clusters
+with service. Default is `true`.
 * `outFields` *optional* - Defines what fields are returned with Features. Deafult
 is `['*']`.
 * `objectIdField` *optional* - Defines the `OBJECTID` field of service. Default is 'OBJECTID'.

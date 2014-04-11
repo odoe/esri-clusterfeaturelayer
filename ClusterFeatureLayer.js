@@ -172,6 +172,8 @@ define([
 
       this._query = new Query();
 
+      this.MODE_SNAPSHOT = options.hasOwnProperty('MODE_SNAPSHOT') ? options.MODE_SNAPSHOT : true;
+
       this._getServiceDetails();
     },
 
@@ -282,14 +284,17 @@ define([
 
     _getObjectIds: function(extent) {
       if (this.url) {
-        //this.clear();
         var ext = extent || this._map.extent;
-        var sr = ext.spatialReference;
         this._query.objectIds = null;
         if (this._where) {
           this._query.where = this._where;
         }
-        this._query.geometry = ext;
+        if (!this.MODE_SNAPSHOT) {
+          this._query.geometry = ext;
+        }
+        if(!this._query.geometry && !this._query.where) {
+          this._query.where = '1=1';
+        }
         this.queryTask.executeForIds(this._query).then(
           lang.hitch(this, '_onIdsReturned'), this._onError
         );
@@ -371,6 +376,10 @@ define([
     },
 
     // public ClusterLayer methods
+    updateClusters: function() {
+      this.clearCache();
+      this._reCluster();
+    },
     clearCache: function() {
       // Summary: Clears the cache for clustered items
       arrayUtils.forEach(this._objectIdCache, function(oid) {
@@ -378,6 +387,7 @@ define([
       }, this);
       this._objectIdCache.length = 0;
       this._clusterCache = {};
+      this._objectIdHash = {};
     },
 
     add: function(p) {
