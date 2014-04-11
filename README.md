@@ -8,6 +8,8 @@ A couple of things I added:
 * Option to add a [Font](https://developers.arcgis.com/javascript/jsapi/font-amd.html) for the Clusters [TextSymbol](https://developers.arcgis.com/javascript/jsapi/textsymbol-amd.html). Default is `10pt` and `Arial`.
 * A `zoomOnClick` option that will zoom the map 1 zoom level on the clicked
   cluster graphic.
+* Has a `MODE_SNAPSHOT` that will cache all features in the service for
+  increased performance. Refresh the layer using `updateClusters()`.
 * Has an `outFields` option for the Features returned.
 * Has an option to use the services default renderer for single features.
 * And more, check source for more options.
@@ -42,8 +44,7 @@ is `['*']`.
 ## Events
 * `clusters-shown` - fires when clusters have been drawn and shown on map. Fires
   after the map extent changes.
-* `details-loaded` - fires when the layer has downloaded the layer has
-  downloaded the default renderer properties from the service.
+* `details-loaded` - fires when the layer has downloaded the default renderer properties from the service.
 
 ## Notes
 Although this behaves similar to a FeatureLayer, it does not have all the
