@@ -225,6 +225,7 @@ define([
     _setMap: function(map, surface) {
       this._query.outSpatialReference = map.spatialReference;
       this._query.returnGeometry = true;
+      this._query.outFields = this._outFields;
       // listen to extent-change so data is re-clustered when zoom level changes
       this._extentChange = on(map, 'extent-change', lang.hitch(this, '_reCluster'));
 
@@ -284,7 +285,7 @@ define([
         //this.clear();
         var ext = extent || this._map.extent;
         var sr = ext.spatialReference;
-        //var query = new Query();
+        this._query.objectIds = null;
         if (this._where) {
           this._query.where = this._where;
         }
@@ -305,7 +306,6 @@ define([
       if (uncached && uncached.length) {
         this._query.where = null;
         this._query.geometry = null;
-        this._query.outFields = this._outFields;
         var queries = [];
         if (uncached.length > this._returnLimit) {
           while(uncached.length) {
