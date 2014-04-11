@@ -204,6 +204,7 @@ define([
           rendererJsonUtil.fromJson(response.drawingInfo.renderer);
         this.native_geometryType = response.geometryType;
         if (response.geometryType === 'esriGeometryPolygon') {
+          this._useDefaultSymbol = false;
           console.info('polygon geometry will be converted to points');
         }
         this.emit('details-loaded', response);
