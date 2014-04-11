@@ -42,21 +42,50 @@ define([
   }
 
   function merge(arrs) {
-    var target = [];
-    arrayUtils.forEach(arrs, function (a) {
-      if (lang.isArray(a)) {
-        target = concat(target, a);
+    //var start = new Date().valueOf();
+    //console.debug('merge start');
+    var len = arrs.length, target = [];
+
+    while (len--) {
+      var o = arrs[len];
+      if (o.constructor === Array) {
+        target = concat(target, o);
       } else {
-        target.push(a);
+        target.push(o);
       }
-    });
+    }
+
+    //var end = new Date().valueOf();
+    //console.debug('merge end', (end - start)/1000);
     return target;
   }
 
-  function difference(arr1/*new objectIds*/, arr2/*cache*/) {
-    return arrayUtils.filter(arr1, function(value) {
-      return arr2.indexOf(value) < 0;
-    });
+  function difference(arr1/*new objectIds*/, cacheCount/*objectId cache length*/, hash/*objecid hash*/) {
+    //var start = new Date().valueOf();
+    //console.debug('difference start');
+    var len = arr1.length, diff = [];
+    if (!cacheCount) {
+      diff = arr1;
+      while (len--) {
+        var value = arr1[len];
+        if (!hash[value]) {
+          hash[value] = value;
+        }
+      }
+      //var endEarly = new Date().valueOf();
+      //console.debug('difference end', (endEarly - start)/1000);
+      return diff;
+    }
+    while (len--) {
+      var val = arr1[len];
+      if (!hash[val]) {
+        hash[val] = val;
+        diff.push(val);
+      }
+    }
+    //var end = new Date().valueOf();
+    //console.debug('difference end', (end - start)/1000);
+    return diff;
   }
 
   return declare([GraphicsLayer], {
@@ -137,8 +166,11 @@ define([
       }
       this._clusterCache = {};
       this._objectIdCache = [];
+      this._objectIdHash = {};
 
       this.detailsLoaded = false;
+
+      this._query = new Query();
 
       this._getServiceDetails();
     },
@@ -191,6 +223,8 @@ define([
 
     // override esri/layers/GraphicsLayer methods
     _setMap: function(map, surface) {
+      this._query.outSpatialReference = map.spatialReference;
+      this._query.returnGeometry = true;
       // listen to extent-change so data is re-clustered when zoom level changes
       this._extentChange = on(map, 'extent-change', lang.hitch(this, '_reCluster'));
 
@@ -247,15 +281,15 @@ define([
 
     _getObjectIds: function(extent) {
       if (this.url) {
-        this.clear();
+        //this.clear();
         var ext = extent || this._map.extent;
         var sr = ext.spatialReference;
-        var query = new Query();
+        //var query = new Query();
         if (this._where) {
-          query.where = this._where;
+          this._query.where = this._where;
         }
-        query.geometry = ext;
-        this.queryTask.executeForIds(query).then(
+        this._query.geometry = ext;
+        this.queryTask.executeForIds(this._query).then(
           lang.hitch(this, '_onIdsReturned'), this._onError
         );
       }
@@ -266,18 +300,17 @@ define([
     },
 
     _onIdsReturned: function(results) {
-      var uncached = difference(results, this._objectIdCache);
+      var uncached = difference(results, this._objectIdCache.length, this._objectIdHash);
       this._objectIdCache = concat(this._objectIdCache, uncached);
       if (uncached && uncached.length) {
-        var query = new Query();
-        query.outSpatialReference = this._map.spatialReference;
-        query.returnGeometry = true;
-        query.outFields = this._outFields;
+        this._query.where = null;
+        this._query.geometry = null;
+        this._query.outFields = this._outFields;
         var queries = [];
         if (uncached.length > this._returnLimit) {
           while(uncached.length) {
-            query.objectIds = uncached.splice(0, this._returnLimit - 1);
-            queries.push(this.queryTask.execute(query));
+            this._query.objectIds = uncached.splice(0, this._returnLimit - 1);
+            queries.push(this.queryTask.execute(this._query));
           }
           all(queries).then(lang.hitch(this, function(res) {
             var features = arrayUtils.map(res, function(r) {
@@ -288,8 +321,8 @@ define([
             });
           }));
         } else {
-          query.objectIds = uncached;
-          this.queryTask.execute(query).then(
+          this._query.objectIds = uncached;
+          this.queryTask.execute(this._query).then(
             lang.hitch(this, '_onFeaturesReturned'), this._onError
           );
         }
@@ -303,25 +336,35 @@ define([
     },
 
     _inExtent: function() {
+      //var start = new Date().valueOf();
+      //console.debug('#inExtent start');
       var ext = this._map.extent;
+      var len = this._objectIdCache.length;
       var valid = [];
-      arrayUtils.forEach(this._objectIdCache, function(oid) {
+
+      while(len--) {
+        var oid = this._objectIdCache[len];
         var cached = this._clusterCache[oid];
         if (cached && ext.contains(cached.geometry)) {
           valid.push(cached);
         }
-      }, this);
+      }
+      //var end = new Date().valueOf();
+      //console.debug('#inExtent end', (end - start)/1000);
       return valid;
     },
 
     _onFeaturesReturned: function(results) {
       var inExtent = this._inExtent();
+      var len = results.features.length;
       this._clusterData.length = 0;
-      if (results.features.length) {
-        arrayUtils.forEach(results.features, function(feat) {
-          this._clusterCache[feat.attributes[this._objectIdField]] = feat;
-        }, this);
+      this.clear();
+      if (len) {
         this._clusterData = results.features;
+        while(len--) {
+          var feat = this._clusterData[len];
+          this._clusterCache[feat.attributes[this._objectIdField]] = feat;
+        }
       }
       this._clusterData =  concat(this._clusterData, inExtent);
       this._clusterGraphics();
@@ -519,10 +562,15 @@ define([
     },
 
     _showAllClusters: function() {
+      //var start = new Date().valueOf();
+      //console.debug('#_showAllClusters start');
+      var len = this._clusters.length;
+
       for ( var i = 0, il = this._clusters.length; i < il; i++ ) {
-        var c = this._clusters[i];
-        this._showCluster(c);
+        this._showCluster(this._clusters[i]);
       }
+      //var end = new Date().valueOf();
+      //console.debug('#_showAllClusters end', (end - start)/1000);
     },
 
     _showCluster: function(c) {
@@ -539,9 +587,9 @@ define([
 
       // show number of points in the cluster
       var label = new TextSymbol(c.attributes.clusterCount)
-      .setColor(new Color(this._clusterLabelColor))
-      .setOffset(0, this._clusterLabelOffset)
-      .setFont(this._font);
+        .setColor(new Color(this._clusterLabelColor))
+        .setOffset(0, this._clusterLabelOffset)
+        .setFont(this._font);
       this.add(
         new Graphic(
           point,
@@ -554,7 +602,6 @@ define([
     _addSingles: function(singles) {
       // add single graphics to the map
       arrayUtils.forEach(singles, function(g) {
-        // TODO function to get symbol
         g.setSymbol(this._getDefaultSymbol(g));
         g.setInfoTemplate(this._singleTemplate);
         this._singles.push(g);
