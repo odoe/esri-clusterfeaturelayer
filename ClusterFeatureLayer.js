@@ -88,6 +88,21 @@ define([
     return diff;
   }
 
+  function toPoints(features) {
+    var len = features.length;
+    var points = [];
+    while (len--) {
+      var g = features[len];
+      points.push(
+        new Graphic(
+          g.geometry.getCentroid(),
+          g.symbol, g.attributes,
+          g.infoTemplate
+      ));
+    }
+    return points;
+  }
+
   return declare([GraphicsLayer], {
     constructor: function(options) {
       // options:
@@ -187,6 +202,10 @@ define([
       }).then(lang.hitch(this, function(response) {
         this._defaultRenderer = this._singleRenderer ||
           rendererJsonUtil.fromJson(response.drawingInfo.renderer);
+        this.native_geometryType = response.geometryType;
+        if (response.geometryType === 'esriGeometryPolygon') {
+          console.info('polygon geometry will be converted to points');
+        }
         this.emit('details-loaded', response);
       }));
     },
@@ -361,11 +380,17 @@ define([
 
     _onFeaturesReturned: function(results) {
       var inExtent = this._inExtent();
-      var len = results.features.length;
+      var features;
+      if (this.native_geometryType === 'esriGeometryPolygon') {
+        features = toPoints(results.features);
+      } else {
+        features = results.features;
+      }
+      var len = features.length;
       this._clusterData.length = 0;
       this.clear();
       if (len) {
-        this._clusterData = results.features;
+        this._clusterData = features;
         while(len--) {
           var feat = this._clusterData[len];
           this._clusterCache[feat.attributes[this._objectIdField]] = feat;
