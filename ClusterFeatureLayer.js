@@ -302,6 +302,19 @@ define([
       this._extentChange.remove();
     },
 
+    _onClusterClick: function(e) {
+      var attr;
+      if (e.graphic) {
+       attr = e.graphic.attributes;
+      }
+      if (attr && attr.clusterCount) {
+        var source = arrayUtils.filter(this._clusterData, function(g) {
+          return attr.clusterId === g.attributes.clusterId;
+        }, this);
+        this.emit('cluster-click', source);
+      }
+    },
+
     _getObjectIds: function(extent) {
       if (this.url) {
         var ext = extent || this._map.extent;
@@ -380,6 +393,8 @@ define([
     },
 
     _onFeaturesReturned: function(results) {
+      //var start = new Date().valueOf();
+      //console.debug('#_onFeaturesReturned start');
       var inExtent = this._inExtent();
       var features;
       if (this.native_geometryType === 'esriGeometryPolygon') {
@@ -391,14 +406,14 @@ define([
       this._clusterData.length = 0;
       this.clear();
       if (len) {
-        this._clusterData = features;
-        while(len--) {
-          var feat = this._clusterData[len];
+        arrayUtils.forEach(features, function(feat) {
           this._clusterCache[feat.attributes[this._objectIdField]] = feat;
-        }
+        }, this);
       }
-      this._clusterData =  concat(this._clusterData, inExtent);
+      this._clusterData = concat(features, inExtent);
       this._clusterGraphics();
+      //var end = new Date().valueOf();
+      //console.debug('#_onFeaturesReturned end', (end - start)/1000);
     },
 
     // public ClusterLayer methods
@@ -467,6 +482,7 @@ define([
     },
 
     onClick: function(e) {
+      this._onClusterClick(e);
       // zoom in to cluster if possible
       if(
         this._zoomOnClick &&
@@ -593,7 +609,6 @@ define([
           'extent': [ p.x, p.y, p.x, p.y ]
         }
       };
-      lang.mixin(cluster.attributes, feature.attributes);
       this._clusters.push(cluster);
     },
 

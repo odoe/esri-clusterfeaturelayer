@@ -47,6 +47,7 @@ is `['*']`.
 * `clusters-shown` - fires when clusters have been drawn and shown on map. Fires
   after the map extent changes.
 * `details-loaded` - fires when the layer has downloaded the default renderer properties from the service.
+* `cluster-click` - will return all points that make up a cluster when a cluster is clicked.
 
 ## Notes
 Although this behaves similar to a FeatureLayer, it does not have all the
