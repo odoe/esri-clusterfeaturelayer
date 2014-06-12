@@ -347,7 +347,7 @@ define([
         var queries = [];
         if (uncached.length > this._returnLimit) {
           while(uncached.length) {
-            this._query.objectIds = uncached.splice(0, this._returnLimit - 1);
+            this._query.where = this._objectIdField + ' IN (' + (uncached.splice(0, this._returnLimit - 1)).join(',') + ')';
             queries.push(this.queryTask.execute(this._query));
           }
           all(queries).then(lang.hitch(this, function(res) {
@@ -359,7 +359,7 @@ define([
             });
           }));
         } else {
-          this._query.objectIds = uncached;
+          this._query.where = this._objectIdField + ' IN (' + uncached.join(',') + ')';
           this.queryTask.execute(this._query).then(
             lang.hitch(this, '_onFeaturesReturned'), this._onError
           );
